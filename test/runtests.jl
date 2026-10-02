@@ -6,4 +6,5 @@ using Test
     include("test_numeric_policy.jl")
     include("test_exact_summaries.jl")
     include("test_numeric_boundaries.jl")
+    include("test_proof_vectors.jl")
 end
