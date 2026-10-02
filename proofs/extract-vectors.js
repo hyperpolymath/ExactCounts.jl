@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // Extract the known-answer vectors from proofs/agda/ExactCounts/Vectors.agda into
-// proofs/vectors/vectors.toml, which test/proof_vectors.jl reproduces against the
+// proofs/vectors/vectors.toml, which test/test_proof_vectors.jl reproduces against the
 // shipped Julia functions.
 //
 // Run it only after the gate has passed (proofs/check.sh does this): a vector is
@@ -58,9 +58,9 @@ const NAT = String.raw`(\d+)`;
 // has to know the encoding.
 const SHAPES = [
   {
-    re: new RegExp(`^(IsRoundHalfUp|IsRounding) ${INT} ${NAT} ${NAT} ${INT}$`),
+    re: new RegExp(`^(IsRoundHalfAway|IsRoundHalfUp|IsRounding) ${INT} ${NAT} ${NAT} ${INT}$`),
     make: (m) => ({
-      kind: m[1] === "IsRoundHalfUp" ? "round_half_up" : "round_half_down",
+      kind: { IsRoundHalfAway: "round_half_away", IsRoundHalfUp: "round_half_up", IsRounding: "round_half_down" }[m[1]],
       numerator: agdaInt(m[2]), denominator: BigInt(m[3]) + 1n,
       digits: BigInt(m[4]), scaled: agdaInt(m[5]),
     }),
@@ -134,7 +134,7 @@ function tomlValue(v) {
   return JSON.stringify(v);
 }
 
-/** Render the records as the TOML file test/proof_vectors.jl reads. */
+/** Render the records as the TOML file test/test_proof_vectors.jl reads. */
 function render(records) {
   const head = [
     "# SPDX-License-Identifier: MPL-2.0",

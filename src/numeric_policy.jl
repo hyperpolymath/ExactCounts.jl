@@ -501,16 +501,16 @@ end
     _rendered_decimal(x, digits) -> String
 
 The decimal rendering of the rational `x` at exactly `digits` places, rounded half
-away from zero, with no floating point anywhere in the computation.
+away from zero, with no floating point anywhere in the computation.  A negative
+value whose rounding is zero renders without a sign (`"0.00"`, not `"-0.00"`):
+the printed digits state the rounded value, and the rounded value is zero.
 """
 function _rendered_decimal(x::Rational, digits::Integer)
-    sign_str = numerator(x) < 0 ? "-" : ""
-    if digits == 0
-        return string(sign_str, _rounded_scaled(abs(numerator(x)), denominator(x), big(1)))
-    end
     scale = big(10)^digits
     scaled = _rounded_scaled(abs(numerator(x)), denominator(x), scale)
-    whole, frac = divrem(abs(scaled), scale)
+    sign_str = numerator(x) < 0 && !iszero(scaled) ? "-" : ""
+    digits == 0 && return string(sign_str, scaled)
+    whole, frac = divrem(scaled, scale)
     return string(sign_str, whole, ".", lpad(string(frac), digits, "0"))
 end
 

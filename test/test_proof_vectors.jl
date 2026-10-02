@@ -19,19 +19,42 @@ const SIGNED = Dict(8 => Int8, 16 => Int16, 32 => Int32, 64 => Int64)
 vint(v, key) = parse(BigInt, v[key])
 
 """
+    expected_decimal(m, s) -> String
+
+The text a correct renderer prints for the scaled integer `m` at `s` decimal
+places: the sign only when `m` is non-zero, then the magnitude's digits.
+"""
+function expected_decimal(m::Integer, s::Integer)
+    sign_str = m < 0 ? "-" : ""
+    a = abs(m)
+    s == 0 && return string(sign_str, a)
+    return string(sign_str, div(a, big(10)^s), ".", lpad(string(rem(a, big(10)^s)), s, "0"))
+end
+
+"""
+    is_control(v) -> Bool
+
+Whether `v` states a rule the shipped display does NOT implement: halves down
+(`round_half_down`), or halves towards +∞ on a negative value (`round_half_up`
+with a negative numerator).  Julia must disagree with every control.
+"""
+is_control(v) = v["kind"] == "round_half_down" ||
+                (v["kind"] == "round_half_up" && vint(v, "numerator") < 0)
+
+"""
     vector_holds(v) -> Bool
 
 Whether the Julia implementation reproduces the known answer stated by vector `v`.
-For a `round_half_down` vector it returns whether Julia AGREES with that rule.
+For a control vector (see `is_control`) it returns whether Julia AGREES with the
+rule the control states, which must be false.
 """
 function vector_holds(v)
     kind = v["kind"]
-    if kind in ("round_half_up", "round_half_down")
+    if kind in ("round_half_away", "round_half_up", "round_half_down")
         n, d, s, m = vint(v, "numerator"), vint(v, "denominator"), Int(vint(v, "digits")), vint(v, "scaled")
         scaled = NPV._rounded_scaled(n, d, big(10)^s)
         rendered = NPV._rendered_decimal(n // d, s)
-        expected = s == 0 ? string(m) : string(div(m, big(10)^s), ".", lpad(string(rem(m, big(10)^s)), s, "0"))
-        return scaled == m && rendered == expected
+        return scaled == m && rendered == expected_decimal(m, s)
     elseif kind == "abundance"
         got = NPV.exact_relative_abundance(vint(v, "count"), vint(v, "total"))
         return got !== nothing && got == vint(v, "numerator") // vint(v, "denominator")
@@ -85,7 +108,7 @@ correct implementation must reject it.
 function mutant(v)
     w = copy(v)
     kind = v["kind"]
-    if kind in ("round_half_up", "round_half_down")
+    if kind in ("round_half_away", "round_half_up", "round_half_down")
         w["scaled"] = string(vint(v, "scaled") + 1)
     elseif kind == "abundance"
         w["numerator"] = string(vint(v, "numerator") + 1)
@@ -111,8 +134,8 @@ end
     @test length(vectors) > 0
 
     @testset "$(v["name"])" for v in vectors
-        if v["kind"] == "round_half_down"
-            # Positive control: these state the OTHER tie rule, and Julia must not
+        if is_control(v)
+            # Positive control: these state a DIFFERENT tie rule, and Julia must not
             # satisfy them.  If it did, this test could not tell the rules apart.
             @test !vector_holds(v)
         else
@@ -126,6 +149,15 @@ end
         @test !isempty(ties)                            # the control is present
         @test all(v -> NPV._rounded_scaled(vint(v, "numerator"), vint(v, "denominator"),
                                            big(10)^Int(vint(v, "digits"))) == vint(v, "scaled") + 1, ties)
+    end
+
+    @testset "negative ties go away from zero, not towards +∞" begin
+        negs = filter(v -> v["kind"] == "round_half_up" && vint(v, "numerator") < 0, vectors)
+        aways = filter(v -> v["kind"] == "round_half_away" && vint(v, "numerator") < 0, vectors)
+        @test !isempty(negs)                            # the control is present
+        @test !isempty(aways)                           # and so is the sign case it controls
+        @test all(v -> NPV._rounded_scaled(vint(v, "numerator"), vint(v, "denominator"),
+                                           big(10)^Int(vint(v, "digits"))) == vint(v, "scaled") - 1, negs)
     end
 
     # Residue R-EC-2: Agda's `Fits k` is a (k+1)-bit two's-complement range.  The

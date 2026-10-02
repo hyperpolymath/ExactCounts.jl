@@ -4,7 +4,7 @@
 # Integers are strings because several exceed 2^53.
 
 source = "proofs/agda/ExactCounts/Vectors.agda"
-count = 37
+count = 48
 
 [[vector]]
 name = "vec-half-up-2/3-at-2dp"
@@ -60,6 +60,94 @@ kind = "round_half_up"
 numerator = "0"
 denominator = "1"
 digits = "2"
+scaled = "0"
+
+[[vector]]
+name = "vec-half-away-2/3-at-6dp"
+kind = "round_half_away"
+numerator = "2"
+denominator = "3"
+digits = "6"
+scaled = "666667"
+
+[[vector]]
+name = "vec-half-away-3/2-at-0dp"
+kind = "round_half_away"
+numerator = "3"
+denominator = "2"
+digits = "0"
+scaled = "2"
+
+[[vector]]
+name = "vec-half-away-5/4-at-1dp"
+kind = "round_half_away"
+numerator = "5"
+denominator = "4"
+digits = "1"
+scaled = "13"
+
+[[vector]]
+name = "vec-half-away-7/12-at-2dp"
+kind = "round_half_away"
+numerator = "7"
+denominator = "12"
+digits = "2"
+scaled = "58"
+
+[[vector]]
+name = "vec-half-away-1/16-at-3dp"
+kind = "round_half_away"
+numerator = "1"
+denominator = "16"
+digits = "3"
+scaled = "63"
+
+[[vector]]
+name = "vec-half-away-neg-1/2-at-0dp"
+kind = "round_half_away"
+numerator = "-1"
+denominator = "2"
+digits = "0"
+scaled = "-1"
+
+[[vector]]
+name = "vec-half-away-neg-1/8-at-2dp"
+kind = "round_half_away"
+numerator = "-1"
+denominator = "8"
+digits = "2"
+scaled = "-13"
+
+[[vector]]
+name = "vec-half-away-neg-2/3-at-2dp"
+kind = "round_half_away"
+numerator = "-2"
+denominator = "3"
+digits = "2"
+scaled = "-67"
+
+[[vector]]
+name = "vec-half-away-neg-1/1000-at-2dp"
+kind = "round_half_away"
+numerator = "-1"
+denominator = "1000"
+digits = "2"
+scaled = "0"
+
+[[vector]]
+name = "vec-half-away-neg-1/3-at-0dp"
+kind = "round_half_away"
+numerator = "-1"
+denominator = "3"
+digits = "0"
+scaled = "0"
+
+[[vector]]
+name = "vec-half-up-neg-1/2-at-0dp"
+kind = "round_half_up"
+numerator = "-1"
+denominator = "2"
+digits = "0"
 scaled = "0"
 
 [[vector]]

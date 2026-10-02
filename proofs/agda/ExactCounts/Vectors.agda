@@ -5,7 +5,7 @@
 --
 -- Every `vec-*` definition below is a concrete fact the type-checker has
 -- verified by computation, and `proofs/extract-vectors.js` turns each one into a
--- JSON record that `test/proof_vectors.jl` reproduces against the shipped Julia
+-- TOML record that `test/test_proof_vectors.jl` reproduces against the shipped Julia
 -- functions.  So a vector is not a number typed into two places: if a value here
 -- were wrong this module would not type-check, and if the Julia code disagreed
 -- with it the Julia test would fail.
@@ -37,9 +37,11 @@ open import Relation.Nullary.Decidable using (True; False; toWitness)
 ------------------------------------------------------------------------
 -- Decimal rounding
 --
--- `IsRoundHalfUp` is the rule `to_display` implements on non-negative values.
--- The `IsRounding` tie vectors are the positive control: Julia must DISAGREE
--- with them, which shows the Julia check can tell the two rules apart.
+-- `IsRoundHalfAway` is the rule `to_display` implements, on either sign; on
+-- non-negative values it is `IsRoundHalfUp` by definition.  Two controls show the
+-- Julia check can tell rules apart: the `IsRounding` tie vectors (halves down),
+-- and an `IsRoundHalfUp` vector at a NEGATIVE tie (halves towards +∞).  Julia
+-- must DISAGREE with both.
 
 vec-half-up-2/3-at-2dp : IsRoundHalfUp (+ 2) 2 2 (+ 67)
 vec-half-up-2/3-at-2dp = agreement-2/3
@@ -61,6 +63,43 @@ vec-half-up-1/8-at-2dp = toWitness {a? = isRoundHalfUp? (+ 1) 7 2 (+ 13)} _
 
 vec-half-up-zero-at-2dp : IsRoundHalfUp (+ 0) 0 2 (+ 0)
 vec-half-up-zero-at-2dp = toWitness {a? = isRoundHalfUp? (+ 0) 0 2 (+ 0)} _
+
+vec-half-away-2/3-at-6dp : IsRoundHalfAway (+ 2) 2 6 (+ 666667)
+vec-half-away-2/3-at-6dp = toWitness {a? = isRoundHalfAway? (+ 2) 2 6 (+ 666667)} _
+
+vec-half-away-3/2-at-0dp : IsRoundHalfAway (+ 3) 1 0 (+ 2)
+vec-half-away-3/2-at-0dp = toWitness {a? = isRoundHalfAway? (+ 3) 1 0 (+ 2)} _
+
+vec-half-away-5/4-at-1dp : IsRoundHalfAway (+ 5) 3 1 (+ 13)
+vec-half-away-5/4-at-1dp = toWitness {a? = isRoundHalfAway? (+ 5) 3 1 (+ 13)} _
+
+-- Denominators past ten, so `d+1` is not confused with a digit count.
+vec-half-away-7/12-at-2dp : IsRoundHalfAway (+ 7) 11 2 (+ 58)
+vec-half-away-7/12-at-2dp = toWitness {a? = isRoundHalfAway? (+ 7) 11 2 (+ 58)} _
+
+vec-half-away-1/16-at-3dp : IsRoundHalfAway (+ 1) 15 3 (+ 63)
+vec-half-away-1/16-at-3dp = toWitness {a? = isRoundHalfAway? (+ 1) 15 3 (+ 63)} _
+
+-- The sign case: negative ties move away from zero.
+vec-half-away-neg-1/2-at-0dp : IsRoundHalfAway (-[1+ 0 ]) 1 0 (-[1+ 0 ])
+vec-half-away-neg-1/2-at-0dp = neg-half-away
+
+vec-half-away-neg-1/8-at-2dp : IsRoundHalfAway (-[1+ 0 ]) 7 2 (-[1+ 12 ])
+vec-half-away-neg-1/8-at-2dp = neg-eighth-away
+
+vec-half-away-neg-2/3-at-2dp : IsRoundHalfAway (-[1+ 1 ]) 2 2 (-[1+ 66 ])
+vec-half-away-neg-2/3-at-2dp = toWitness {a? = isRoundHalfAway? (-[1+ 1 ]) 2 2 (-[1+ 66 ])} _
+
+-- A small negative value rounds to zero itself, not to a signed zero.
+vec-half-away-neg-1/1000-at-2dp : IsRoundHalfAway (-[1+ 0 ]) 999 2 (+ 0)
+vec-half-away-neg-1/1000-at-2dp = toWitness {a? = isRoundHalfAway? (-[1+ 0 ]) 999 2 (+ 0)} _
+
+vec-half-away-neg-1/3-at-0dp : IsRoundHalfAway (-[1+ 0 ]) 2 0 (+ 0)
+vec-half-away-neg-1/3-at-0dp = toWitness {a? = isRoundHalfAway? (-[1+ 0 ]) 2 0 (+ 0)} _
+
+-- Control: `IsRoundHalfUp` read literally on a negative tie takes −1/2 to 0.
+vec-half-up-neg-1/2-at-0dp : IsRoundHalfUp (-[1+ 0 ]) 1 0 (+ 0)
+vec-half-up-neg-1/2-at-0dp = toWitness {a? = isRoundHalfUp? (-[1+ 0 ]) 1 0 (+ 0)} _
 
 vec-half-down-1/2-at-0dp : IsRounding (+ 1) 1 0 (+ 0)
 vec-half-down-1/2-at-0dp = half-ties-round-down

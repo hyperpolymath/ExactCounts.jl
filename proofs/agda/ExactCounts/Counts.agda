@@ -103,9 +103,11 @@ checkedAdd {k} a b with classifyAdd a b
 ... | inRange s f     = ok (mkBounded s f)
 ... | outOfRange s ¬f = refused overflow
 
--- Checked sum over a non-empty collection, mirroring `checked_count_sum`: the
--- accumulator starts at the first element, so no identity element has to be
--- invented for an empty one.
+-- Checked sum over a non-empty collection, mirroring `checked_count_sum` on a
+-- non-empty input: the accumulator starts at the first element.  The Julia
+-- function also accepts an empty collection and returns `0`; that case is not
+-- modelled here (it needs no overflow guard, and `0` fits every width), and is
+-- listed as such in proofs/PROOF-STATUS.md.
 checkedSumOf : ∀ {k} (x : Bounded k) (xs : List (Bounded k)) → Checked (Bounded k)
 checkedSumOf {k} x []       = ok x
 checkedSumOf {k} x (y ∷ ys) with classifyAdd x y
@@ -140,14 +142,20 @@ checkedAdd-refuses-exactly-when-it-must a b p with classifyAdd a b
 ... | inRange s f     = ⊥-elim (refused≢ok (sym p))
 ... | outOfRange s ¬f = ¬f
 
--- A fourth statement would be natural here: that the refusal produced is
--- *literally* `overflow` and no other constructor (`r ≡ overflow`).  That needs
--- injectivity for `Checked.refused`, and Agda will not discharge `refl` on
--- `refused r ≡ refused s` under `--without-K` in this module.  It is recorded as
--- an open obligation in `proofs/residue/exact-counts.residue` rather than
--- quietly dropped, and nothing the layer claims rests on it: statement (3)
--- already fixes *when* a refusal happens to exactly the out-of-range case, which
--- is the property that prevents a wrapped count from being mistaken for a total.
+-- (4) …and the refusal it produces is literally `overflow`, no other
+-- constructor.  This needs `refused` to be injective, which holds by `refl`
+-- once the carrier is given explicitly (residue R-EC-1, now closed: the earlier
+-- attempt left the carrier implicit and the unifier blocked on it).
+refused-injective : ∀ {A} {r s : Refusal} →
+                    Checked.refused {A} r ≡ Checked.refused s → r ≡ s
+refused-injective refl = refl
+
+checkedAdd-refusal-is-overflow :
+  ∀ {k} (a b : Bounded k) {r : Refusal} →
+  checkedAdd a b ≡ refused r → r ≡ overflow
+checkedAdd-refusal-is-overflow a b p with classifyAdd a b
+... | inRange s f     = ⊥-elim (refused≢ok (sym p))
+... | outOfRange s ¬f = sym (refused-injective p)
 
 ------------------------------------------------------------------------
 -- The same guarantee for a whole table

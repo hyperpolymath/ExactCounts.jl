@@ -23,9 +23,16 @@
 --
 -- Which one a display layer uses is a contract decision; that the two are
 -- different, and exactly where, is what these definitions record.  ExactCounts.jl
--- decided: `to_display` rounds an exact half away from zero, which on the
--- non-negative counts and proportions it renders is `IsRoundHalfUp`.  Both rules
--- are decidable below, so a harness can ask either of any candidate.
+-- decided: `to_display` rounds an exact half away from zero *in both
+-- directions*.  That rule is `IsRoundHalfAway`, defined by the sign of `n`:
+-- on `n ≥ 0` it is `IsRoundHalfUp` (by `refl`), and on `n < 0` it is the mirror
+-- image of `IsRoundHalfUp` at `−n` (also by `refl`), so `−1/2` at 0 dp is `−1`.
+-- `IsRoundHalfUp` alone would take `−1/2` to `0`; it is kept because it is the
+-- non-negative half of the shipped rule and because the tie vectors need both
+-- directions.  All three rules are decidable, and the shipped one has at most
+-- one answer (`unique-halfAway`), so a vector pins the digit rather than
+-- merely admitting it.  Existence — that some `m` always satisfies it — is not
+-- proved here; see proofs/residue/exact-counts.residue.
 
 {-# OPTIONS --without-K --safe #-}
 
@@ -34,10 +41,15 @@ module ExactCounts.DecimalRounding where
 open import ExactCounts.Prelude
 
 open import Data.Integer as ℤ
-  using (ℤ; +_; +0; +[1+_]; -[1+_]; -_; _*_; _+_; _-_; _≤_; _<_)
-open import Data.Integer.Properties as ℤₚ using (_≤?_; _<?_)
+  using (ℤ; +_; +0; +[1+_]; -[1+_]; -_; _*_; _+_; _-_; _≤_; _<_; pred)
+open import Data.Integer.Properties as ℤₚ
+  using (_≤?_; _<?_; ≤-<-trans; +-monoˡ-<; *-cancelʳ-<-nonNeg;
+         i<j⇒i≤pred[j]; pred-suc; ≤-antisym; neg-involutive)
+open import Data.Integer.Tactic.RingSolver using (solve-∀)
 open import Data.Nat.Base as ℕ using (ℕ; zero; suc)
 open import Data.Product using (_×_; _,_)
+open import Relation.Binary.PropositionalEquality
+  using (_≡_; refl; sym; trans; cong; subst; subst₂)
 open import Relation.Nullary.Decidable using (Dec; yes; no; toWitness)
 
 ------------------------------------------------------------------------
@@ -83,13 +95,74 @@ isRoundHalfUp? n d s m
 ...   | yes hi = yes (lo , hi)
 
 ------------------------------------------------------------------------
+-- The shipped rule: halves away from zero, in both directions
+
+-- Defined by the sign of `n`, so each half of the definition is a statement
+-- about `IsRoundHalfUp` and nothing new about ties is introduced.
+IsRoundHalfAway : ℤ → ℕ → ℕ → ℤ → Set
+IsRoundHalfAway (+ k)    d s m = IsRoundHalfUp (+ k) d s m
+IsRoundHalfAway -[1+ k ] d s m = IsRoundHalfUp +[1+ k ] d s (- m)
+
+-- On non-negative values the shipped rule *is* `IsRoundHalfUp`.
+away-agrees-on-nonneg : ∀ k d s m →
+                        IsRoundHalfAway (+ k) d s m ≡ IsRoundHalfUp (+ k) d s m
+away-agrees-on-nonneg k d s m = refl
+
+-- A negative value rounds to the negation of its magnitude's rounding.
+away-mirror : ∀ k d s m →
+              IsRoundHalfAway -[1+ k ] d s m ≡ IsRoundHalfAway +[1+ k ] d s (- m)
+away-mirror k d s m = refl
+
+-- Decided by delegating to `isRoundHalfUp?` on the magnitude.
+isRoundHalfAway? : ∀ n d s m → Dec (IsRoundHalfAway n d s m)
+isRoundHalfAway? (+ k)    d s m = isRoundHalfUp? (+ k) d s m
+isRoundHalfAway? -[1+ k ] d s m = isRoundHalfUp? +[1+ k ] d s (- m)
+
+private
+  lower-eq : ∀ a D → (+ 2 * a * D - D) + D ≡ a * (+ 2 * D)
+  lower-eq = solve-∀
+
+  upper-eq : ∀ a D → (+ 2 * a * D + D) + D ≡ (+ 1 + a) * (+ 2 * D)
+  upper-eq = solve-∀
+
+  -- If `m`'s lower bound and `m′`'s upper bound both hold of the same scaled
+  -- value `X`, then `m ≤ m′`: the half-open windows of distinct digits are
+  -- disjoint.
+  below : ∀ (X : ℤ) (d : ℕ) (m m′ : ℤ) →
+          + 2 * m * +[1+ d ] - +[1+ d ] ≤ X →
+          X < + 2 * m′ * +[1+ d ] + +[1+ d ] → m ≤ m′
+  below X d m m′ lo hi′ = subst (m ≤_) (pred-suc m′) (i<j⇒i≤pred[j] m<1+m′)
+    where
+    D = +[1+ d ]
+    step : (+ 2 * m * D - D) + D < (+ 2 * m′ * D + D) + D
+    step = +-monoˡ-< D (≤-<-trans lo hi′)
+    m<1+m′ : m < + 1 + m′
+    m<1+m′ = *-cancelʳ-<-nonNeg (+ 2 * D)
+               (subst₂ _<_ (lower-eq m D) (upper-eq m′ D) step)
+
+-- `IsRoundHalfUp` has at most one answer.
+unique-halfUp : ∀ {n d s m m′} →
+                IsRoundHalfUp n d s m → IsRoundHalfUp n d s m′ → m ≡ m′
+unique-halfUp {n} {d} {s} {m} {m′} (lo , hi) (lo′ , hi′) =
+  ≤-antisym (below _ d m m′ lo hi′) (below _ d m′ m lo′ hi)
+
+-- …and so has the shipped rule, on either sign.
+unique-halfAway : ∀ {n d s m m′} →
+                  IsRoundHalfAway n d s m → IsRoundHalfAway n d s m′ → m ≡ m′
+unique-halfAway {+ k}       {d} {s} p q = unique-halfUp {+ k} {d} {s} p q
+unique-halfAway { -[1+ k ]} {d} {s} {m} {m′} p q =
+  trans (sym (neg-involutive m))
+        (trans (cong -_ (unique-halfUp {+[1+ k ]} {d} {s} p q))
+               (neg-involutive m′))
+
+------------------------------------------------------------------------
 -- Known-answer vectors
 --
 -- Each of these is a decimal the application prints.  The proofs are `toWitness`
 -- applied to a decision procedure, so the check is computation, not assertion:
 -- if the digits did not satisfy the rounding spec, these definitions would fail
 -- to type-check.  These are the values `proofs/extract-vectors.js` writes to `proofs/vectors/`
--- and `test/proof_vectors.jl` reproduces.
+-- and `test/test_proof_vectors.jl` reproduces.
 
 -- 2/3 to two decimals is 0.67.   (2·2·100 − 3 = 397 ≤ 2·67·3 = 402 < 403)
 rounding-2/3-at-2dp : IsRounding (+ 2) 2 2 (+ 67)
@@ -155,3 +228,16 @@ agreement-5/8 =
 agreement-one : IsRoundHalfUp (+ 1) 0 2 (+ 100)
 agreement-one =
   toWitness {a? = + 199 ℤ.≤? + 200} _ , toWitness {a? = + 200 ℤ.<? + 201} _
+
+------------------------------------------------------------------------
+-- Negative ties: the sign case of the shipped rule
+
+-- −1/2 at zero decimals is −1, not 0.   (magnitude 1/2 → 1: 2 ≤ 2 < 6)
+neg-half-away : IsRoundHalfAway -[1+ 0 ] 1 0 -[1+ 0 ]
+neg-half-away =
+  toWitness {a? = + 2 ℤ.≤? + 2} _ , toWitness {a? = + 2 ℤ.<? + 6} _
+
+-- −1/8 at two decimals is −0.13.   (2·13·8 − 8 = 200 ≤ 200 < 216)
+neg-eighth-away : IsRoundHalfAway -[1+ 0 ] 7 2 -[1+ 12 ]
+neg-eighth-away =
+  toWitness {a? = + 200 ℤ.≤? + 200} _ , toWitness {a? = + 200 ℤ.<? + 216} _
