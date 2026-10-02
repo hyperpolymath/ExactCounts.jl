@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MPL-2.0
+name = "ExactCounts"
+uuid = "02f4fd24-97d0-4405-b426-f95b4863bf14"
+authors = ["Jonathan D.A. Jewell <6759885+hyperpolymath@users.noreply.github.com>"]
+version = "0.1.0"
+
+[deps]
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+
+[compat]
+SHA = "0.7, 1"
+julia = "1.10"
+
+[extras]
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Random", "Test"]
