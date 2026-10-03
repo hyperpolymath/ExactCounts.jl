@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: CC-BY-SA-4.0
+# Residue — ExactCounts.jl
+#
+# Obligations the Agda development does NOT discharge, stated so that somebody
+# could pick one up cold.  Each entry is something a reader of
+# proofs/PROOF-STATUS.md might reasonably assume is proved, and is not.
+# Lifted from MetaManifold-WebUI@c7e5a39 proofs/residue/ and re-measured
+# against this repository on 2026-10-02.
+#
+# Format: id, statement, status, why, impact, closes-with.
+
+R-EC-1
+  statement: ∀ {A} {r s : Refusal} → Checked.refused {A} r ≡ Checked.refused s → r ≡ s
+  status: CLOSED (2026-10-02)
+  why: |
+    Proved by `refl` once the carrier is explicit (`refused-injective` in
+    Counts.agda).  The earlier failure left `A` implicit on the left and the
+    unifier blocked on it.  Its use, `checkedAdd-refusal-is-overflow`, is proved.
+
+R-EC-2
+  statement: |
+    `Fits k` is a (k+1)-bit two's-complement range; that `k = 63` is Julia's
+    `Int64` (and 7/15/31 are Int8/16/32) is a fact about the running Julia, not
+    about the model.
+  status: CHECKED, NOT PROVED (by construction)
+  why: A model of Julia's integer widths is out of scope for Agda.
+  impact: MEDIUM but bounded — a wrong k would make the guard wrong in a way the proofs accept.
+  closes-with: |
+    Already mitigated: test/test_proof_vectors.jl "R-EC-2" pins both ends of
+    every native signed width with `fits` vectors and checks the overflow guard
+    trips exactly past typemax and typemin.  Cannot be closed further on the
+    Agda side.
+
+R-EC-3
+  statement: |
+    `checked_count_sum(...; on_overflow = :widen)` promotes to BigInt instead of
+    refusing, and `checked_count_sum` of an EMPTY collection returns 0.
+  status: OUT OF SCOPE
+  why: |
+    `checkedSumOf` models the refusing path over a non-empty collection.  Widening
+    has no bound (so no `Fits k` to state), and the empty sum needs no guard.
+  impact: LOW.  Both behaviours are unit-tested in test/test_numeric_policy.jl.
+  closes-with: |
+    An `Outcome`-valued `checkedSum : List (Bounded k) → Checked (Bounded k)`
+    with `checkedSum [] ≡ ok 0` and an exactness lemma; :widen stays out.
+
+R-EC-4
+  statement: |
+    The denominator budget: `exact_fraction`, `exact_relative_abundance` and
+    `exact_rational_sum` raise `ResourceLimitError` when a denominator is wider
+    than `max_denominator_bits`.
+  status: OUT OF SCOPE (Julia-only resource policy)
+  why: |
+    The model's rationals are unbounded and `relativeAbundance` has no budget
+    arm, so nothing proved says when the budget trips or that it is checked
+    after the zero-total test.
+  impact: |
+    LOW for correctness (the budget refuses, it never returns a wrong value),
+    but the refusal ORDER past step 3 of docs/numeric-contracts.md is tested,
+    not proved.
+  closes-with: |
+    A `budgetExhausted` Refusal constructor and a bit-width argument to
+    `relativeAbundance`, with a lemma that it is reached only after
+    `countExceedsTotal` and `zeroTotal` are ruled out.
+
+R-DR-1
+  statement: ∀ n d s → ∃ λ m → IsRoundHalfAway n d s m   (existence of the rounding)
+  status: OPEN
+  why: |
+    Uniqueness is proved (`unique-halfAway`), and every shipped vector exhibits
+    its witness, but there is no general function with a soundness lemma.  It
+    needs floor-division lemmas over ℤ that stdlib 2.1 has only in pieces.
+  impact: |
+    LOW.  A vector can only pin the digit Julia prints (uniqueness), and Julia
+    always prints one; existence would add that the spec is never empty.
+  closes-with: |
+    m = ⌊(2·n·10^s + (d+1)) / (2·(d+1))⌋ for n ≥ 0, mirrored for n < 0, with the
+    two bounds from `Data.Integer.DivMod` (`a≡a%n+[a/n]*n`, `0≤a%n<n`).
+
+R-DR-2
+  statement: |
+    `to_display` of an APPROXIMATE value uses `Base.round`, which takes ties to
+    even (round(0.125; digits = 2) == 0.12), unlike the exact path.
+  status: OUT OF SCOPE (by design)
+  why: An approximate value has no exact tie to round; the proofs cover exact rationals only.
+  impact: LOW; documented in docs/numeric-contracts.md so the two paths are not confused.
+
+R-TC-1
+  statement: |
+    The proofs are checked against one toolchain: Agda 2.6.4.3 + agda-stdlib 2.1
+    (Debian 13 trixie's `agda` and `agda-stdlib` packages).
+  status: CLOSED for reproducibility (2026-10-02); portability OPEN
+  why: |
+    The source repository pinned an UNTAGGED stdlib SHA (2ffa8b7d, the 3.0 line)
+    that does not build on any release.  This repository ports the modules to the
+    tagged stdlib 2.1, and proofs/lib.sh refuses any other Agda rather than
+    trying it.  Not yet checked against stdlib 2.2+ / Agda 2.7+.
+  closes-with: A CI matrix row on a newer released pair, when one is adopted.

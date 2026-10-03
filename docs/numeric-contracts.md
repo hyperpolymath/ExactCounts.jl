@@ -5,7 +5,7 @@
 **Status:** published, implemented in `src/numeric_policy.jl`.
 **Scope:** how numbers become exact, approximate or rounded; what may cross each
 boundary; what is refused. Methods and their assumptions are catalogued separately in
-`method-catalogue-v1.md`.
+[`method-catalogue-v1.md`](method-catalogue-v1.md).
 
 ## Why this document exists
 
@@ -49,14 +49,31 @@ and within 2^53. Beyond that a Float64 holds *a* value but cannot prove *which*
 integer it was — and the float in hand may have been rounded earlier by R, a CSV
 reader or a JavaScript client, a history that cannot be inspected. Such a value is
 refused. `checked_count_sum` refuses to wrap: overflow raises `CountOverflowError`
-unless `on_overflow = :widen` carries the total in `BigInt`.
+unless `on_overflow = :widen` carries the total in `BigInt`. The sum of an empty
+collection is `0`. The proofs model the checked sum of a *non-empty* collection only;
+the empty case and `:widen` are Julia behaviour outside them (see
+`proofs/PROOF-STATUS.md`).
 
 **Proportions.** `exact_relative_abundance(count, total)` returns `Rational{BigInt}`, or
-`nothing` when `total == 0`. Julia's own `//` would answer `1//0` here — a non-finite
-`Rational` that renders as a number — so the zero denominator is refused before the
-division. `nothing` means "this sample has no composition", an unsuccessful state the
-presentation layer must render as such, never as `0.0`. `exact_rational_sum` bounds
-denominator growth and raises `ResourceLimitError` when the budget is exhausted.
+`nothing` when `total == 0` and `count == 0`. Julia's own `//` would answer `1//0` for a
+zero total — a non-finite `Rational` that renders as a number — so the zero denominator
+is refused before the division. `nothing` means "this sample has no composition", an
+unsuccessful state the presentation layer must render as such, never as `0.0`.
+
+The refusals are checked in a fixed order, and the order is part of the contract:
+
+1. a negative `total` or `count` → `ArgumentError`;
+2. `count > total` → `ArgumentError` ("exceeds") — *including* when `total == 0`, so
+   `(1, 0)` is an argument error, not "no composition";
+3. `total == 0` → `nothing`;
+4. a denominator wider than `max_denominator_bits` → `ResourceLimitError`.
+
+Steps 2 and 3, and their order, are proved (`Proportions.agda`; the reject control
+`reject/RefusalOrder.agda` shows the opposite order is rejected). Step 1 has no
+counterpart in the model, whose inputs are natural numbers. Step 4 — the denominator
+budget, also enforced by `exact_rational_sum` — is a **Julia-only resource policy**:
+the model has unbounded rationals and no budget arm, so nothing proved says when it
+trips.
 
 **JSON and the browser.** A JSON number on the way through a JavaScript client is a
 Float64, so:
@@ -73,11 +90,14 @@ Float64, so:
 `to_storage` applies the same rules to a wrapped value; `to_display` is the *only*
 place a value is rounded, and the string it returns names its own kind.
 An exact rational is rendered at N places by integer division, with an exact half
-rounded **away from zero** (`1/2` at 0 places is `1`, `1/8` at 2 places is `0.13`).
-For the non-negative counts and proportions this package produces, that is the rule
-`IsRoundHalfUp` in `proofs/agda/ExactCounts/DecimalRounding.agda`; see
-`proofs/PROOF-STATUS.md`. A value already of kind *approximate* is rounded by
-`Base.round` instead, and that path is outside the proofs.
+rounded **away from zero in both directions** (`1/2` at 0 places is `1`, `−1/2` is `−1`,
+`1/8` at 2 places is `0.13`, `−1/8` is `−0.13`). A negative value whose rounding is zero
+is printed without a sign (`−1/1000` at 2 places is `0.00`). That rule is
+`IsRoundHalfAway` in `proofs/agda/ExactCounts/DecimalRounding.agda`, which is proved to
+have at most one answer for every input; see `proofs/PROOF-STATUS.md`. A value already
+of kind *approximate* is rounded by `Base.round`, which takes ties **to even**
+(`round(0.125; digits = 2)` is `0.12`); that path is outside the proofs, and it is one
+more reason an approximate value is never labelled exact.
 
 **CSV.** Text in, text out, no types. A count read back from CSV is a `Float64` via any
 parser that sniffs types, so a CSV round trip of a big count is lossy and must be

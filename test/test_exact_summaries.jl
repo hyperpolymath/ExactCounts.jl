@@ -259,6 +259,14 @@ using ExactCounts
             @test occursin("0.13", to_display(exact_value(1 // 8); digits = 2))
             @test occursin("-0.13", to_display(exact_value(-1 // 8); digits = 2))
         end
+        @testset "a negative value that rounds to zero has no sign" begin
+            # The digits state the rounded value; -1/1000 at two decimals is zero,
+            # and "-0.00" would state a sign the rounded value does not have.
+            @test ExactCounts.NumericPolicy._rendered_decimal(-1 // 1000, 2) == "0.00"
+            @test ExactCounts.NumericPolicy._rendered_decimal(-1 // 3, 0) == "0"
+            @test ExactCounts.NumericPolicy._rendered_decimal(-1 // 200, 2) == "-0.01"   # the tie still moves away
+            @test ExactCounts.NumericPolicy._rendered_decimal(-1 // 2, 0) == "-1"
+        end
         @testset "values beyond Float64 still render as digits" begin
             # Float64 overflows its exact-integer range around 2^53; this is far past it,
             # so a float-based renderer would lose the integer part or switch to e+00.
