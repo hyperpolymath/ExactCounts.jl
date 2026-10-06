@@ -88,6 +88,12 @@ expect_reject "adequacy: negative tie sent towards zero" run_gate "ExactCounts/D
 expect_reject "adequacy: ℚ known answer wrong" run_gate "ExactCounts/DecimalRoundingAdequacy.agda" \
   'sed -i "s|ℚ./ 8) 2 -\[1+ 12 \]|ℚ./ 8) 2 -[1+ 11 ]|" "$1"'
 
+expect_reject "sweep: one answer sent towards zero" run_gate "ExactCounts/Sweep.agda" \
+  'sed -i "s|row (-\[1+ 0 \]) 7 2 (-\[1+ 12 \])|row (-[1+ 0 ]) 7 2 (-[1+ 11 ])|" "$1"'
+
+expect_reject "sweep: one grid point dropped" run_gate "ExactCounts/Sweep.agda" \
+  'sed -i "/row (+ 5) 3 1 (+ 13) ∷/d" "$1"'
+
 expect_reject "proportions: zero total silently zero" run_gate "ExactCounts/Proportions.agda" \
   'sed -i "s#^\.\.\. | yes _ = refused zeroTotal#... | yes _ = value 0ℚᵘ#" "$1"'
 

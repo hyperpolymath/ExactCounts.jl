@@ -176,3 +176,60 @@ end
         end
     end
 end
+
+"""
+    sweep_disagreements(rounds, rows) -> Int
+
+How many sweep rows `[n, D, s, m]` the rule `rounds(n, D, s, m)` contradicts.
+A count, never a parity, so any number of failures is visible.
+"""
+sweep_disagreements(rounds, rows) = count(r -> !rounds(big.(r)...), rows)
+
+"""
+    julia_rounds(n, D, s, m) -> Bool
+
+Whether the shipped display rounds `n/D` to the scaled integer `m` at `s`
+places, and renders it as the matching decimal text.
+"""
+julia_rounds(n, D, s, m) =
+    NPV._rounded_scaled(n, D, big(10)^Int(s)) == m &&
+    NPV._rendered_decimal(n // D, Int(s)) == expected_decimal(m, Int(s))
+
+"""
+    documented_sweep_grid() -> Vector
+
+The inputs `[n, D, s]` that proofs/PROOF-STATUS.md promises the sweep covers,
+written out here rather than read from the generator: numerators -30:30,
+denominators 1:16, precisions 0:3, ordered by precision, denominator, numerator.
+"""
+documented_sweep_grid() = [[n, D, s] for s in 0:3 for D in 1:16 for n in -30:30]
+
+@testset "Agda-certified rounding sweep" begin
+    path = joinpath(pkgdir(ExactCounts), "proofs", "vectors", "sweep.toml")
+    doc = TOML.parsefile(path)
+    rows = doc["rows"]
+    @test length(rows) == doc["count"]
+    @test length(rows) > 0
+
+    # The table covers the documented grid, not merely whatever bounds the
+    # generator was last run with; a shrunken grid would still type-check.
+    grid = documented_sweep_grid()
+    inputs(rs) = [Int.(r[1:3]) for r in rs]
+    @test inputs(rows) == grid
+    @test inputs(rows[2:end]) != grid
+
+    # Every row Agda certified, reproduced by Julia.
+    @test sweep_disagreements(julia_rounds, rows) == 0
+
+    # Controls: the sweep tells the shipped rule apart from its neighbours.
+    ties_to_even(n, D, s, m) = round(BigInt, n * big(10)^Int(s) // D, RoundNearest) == m
+    ties_up(n, D, s, m) = fld(2 * n * big(10)^Int(s) + D, 2 * D) == m
+    @test sweep_disagreements(ties_to_even, rows) > 0
+    @test sweep_disagreements(ties_up, rows) > 0
+
+    # One wrong row is seen as exactly one failure.
+    planted = copy(rows)
+    k = findfirst(r -> r[1] < 0 && r[2] == 8 && r[3] == 2, planted)
+    planted[k] = [planted[k][1], planted[k][2], planted[k][3], planted[k][4] + 1]
+    @test sweep_disagreements(julia_rounds, planted) == 1
+end
