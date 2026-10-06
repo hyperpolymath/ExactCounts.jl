@@ -15,3 +15,4 @@ import ExactCounts.Proportions
 import ExactCounts.DecimalRounding
 import ExactCounts.DecimalRoundingAdequacy
 import ExactCounts.Vectors
+import ExactCounts.Sweep

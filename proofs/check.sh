@@ -7,7 +7,8 @@
 #   2. type-check ExactCounts/All.agda; any Agda warning is a failure
 #   3. reject controls: every false statement in agda/reject/ must fail
 #   4. gate self-test: deliberate breakages must each be rejected
-#   5. vector extraction is up to date (needs bun; refused, not skipped, if absent)
+#   5. the generated sweep table and the extracted vectors are up to date (needs
+#      bun; refused, not skipped, if absent)
 #
 # Usage: proofs/check.sh
 
@@ -32,4 +33,5 @@ printf 'check: ExactCounts/All.agda type-checks\n'
 "$PROOFS_DIR/tests/gate-selftest.sh"
 
 command -v bun >/dev/null 2>&1 || die "bun not found: the vectors cannot be re-extracted, so their freshness is unchecked"
+bun "$PROOFS_DIR/gen-sweep.js" --check
 bun "$PROOFS_DIR/extract-vectors.js" --check
