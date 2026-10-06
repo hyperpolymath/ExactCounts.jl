@@ -31,8 +31,8 @@
 -- non-negative half of the shipped rule and because the tie vectors need both
 -- directions.  All three rules are decidable, and the shipped one has at most
 -- one answer (`unique-halfAway`), so a vector pins the digit rather than
--- merely admitting it.  Existence — that some `m` always satisfies it — is not
--- proved here; see proofs/residue/exact-counts.residue.
+-- merely admitting it.  It also has at least one (`exists-halfAway`), so it
+-- has exactly one for every value, and `roundHalfAway` computes it.
 
 {-# OPTIONS --without-K --safe #-}
 
@@ -47,7 +47,11 @@ open import Data.Integer.Properties as ℤₚ
          i<j⇒i≤pred[j]; pred-suc; ≤-antisym; neg-involutive)
 open import Data.Integer.Tactic.RingSolver using (solve-∀)
 open import Data.Nat.Base as ℕ using (ℕ; zero; suc)
-open import Data.Product using (_×_; _,_)
+import Data.Nat.Properties as ℕₚ
+open import Data.Nat.DivMod using (_/_; _%_; m≡m%n+[m/n]*n; m%n<n)
+import Data.Nat.Tactic.RingSolver as NS
+open import Data.Rational.Base as ℚ using (ℚ)
+open import Data.Product using (_×_; _,_; ∃; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst; subst₂)
 open import Relation.Nullary.Decidable using (Dec; yes; no; toWitness)
@@ -155,6 +159,113 @@ unique-halfAway { -[1+ k ]} {d} {s} {m} {m′} p q =
         (trans (cong -_ (unique-halfUp {+[1+ k ]} {d} {s} p q))
                (neg-involutive m′))
 
+
+------------------------------------------------------------------------
+-- Existence: every value has a rounding under the shipped rule
+--
+-- With uniqueness above, `IsRoundHalfAway n d s` has exactly one solution for
+-- every `n`, `d` and `s` (R-DR-1).  No division over ℤ is needed: the sign
+-- split in `IsRoundHalfAway` reduces the negative case to the magnitude, and
+-- for `n = + k` the witness is the ℕ quotient
+--
+--   m = (2·k·10^s + D) / (2·D),   D = d + 1,
+--
+-- whose two bounds come from `m≡m%n+[m/n]*n` and `m%n<n`.
+
+-- `pow10` is the cast of the ℕ power, so ℕ arithmetic can be lifted into it.
+pow10≡ : ∀ s → pow10 s ≡ + (10 ℕ.^ s)
+pow10≡ zero    = refl
+pow10≡ (suc s) =
+  trans (cong (_* + 10) (pow10≡ s))
+        (trans (sym (ℤₚ.pos-* (10 ℕ.^ s) 10)) (cong +_ (ℕₚ.*-comm (10 ℕ.^ s) 10)))
+
+private
+  twoD : ∀ q D → 2 ℕ.* D ℕ.+ q ℕ.* (2 ℕ.* D) ≡ (2 ℕ.* q ℕ.* D ℕ.+ D) ℕ.+ D
+  twoD = NS.solve-∀
+
+  -- The ℕ core: for any `N` some `q` has `2qD − D ≤ 2N < 2qD + D`.
+  halfUp-core : ∀ N d → let D = suc d in
+                ∃ λ q → (2 ℕ.* q ℕ.* D ℕ.≤ 2 ℕ.* N ℕ.+ D)
+                      × (2 ℕ.* N ℕ.< 2 ℕ.* q ℕ.* D ℕ.+ D)
+  halfUp-core N d = q , lo , hi
+    where
+    D = suc d
+    T = 2 ℕ.* N ℕ.+ D
+    q = T / (2 ℕ.* D)
+    r = T % (2 ℕ.* D)
+    eq : T ≡ r ℕ.+ q ℕ.* (2 ℕ.* D)
+    eq = m≡m%n+[m/n]*n T (2 ℕ.* D)
+    shuffle : 2 ℕ.* q ℕ.* D ≡ q ℕ.* (2 ℕ.* D)
+    shuffle = trans (cong (ℕ._* D) (ℕₚ.*-comm 2 q)) (ℕₚ.*-assoc q 2 D)
+    lo = subst₂ ℕ._≤_ (sym shuffle) (sym eq) (ℕₚ.m≤n+m (q ℕ.* (2 ℕ.* D)) r)
+    step : T ℕ.< (2 ℕ.* q ℕ.* D ℕ.+ D) ℕ.+ D
+    step = subst₂ ℕ._<_ (sym eq) (twoD q D)
+                  (ℕₚ.+-monoˡ-< (q ℕ.* (2 ℕ.* D)) (m%n<n T (2 ℕ.* D)))
+    hi = ℕₚ.+-cancelʳ-< D (2 ℕ.* N) (2 ℕ.* q ℕ.* D ℕ.+ D) step
+
+  cancelD : ∀ y D → (y + D) - D ≡ y
+  cancelD = solve-∀
+
+  castQ : ∀ q D → + 2 * + q * + D ≡ + (2 ℕ.* q ℕ.* D)
+  castQ q D = trans (cong (_* + D) (sym (ℤₚ.pos-* 2 q))) (sym (ℤₚ.pos-* (2 ℕ.* q) D))
+
+  castN : ∀ k s → + 2 * (+ k * pow10 s) ≡ + (2 ℕ.* (k ℕ.* 10 ℕ.^ s))
+  castN k s = trans (cong (λ p → + 2 * (+ k * p)) (pow10≡ s))
+                    (trans (cong (+ 2 *_) (sym (ℤₚ.pos-* k (10 ℕ.^ s))))
+                           (sym (ℤₚ.pos-* 2 (k ℕ.* 10 ℕ.^ s))))
+
+-- Every non-negative value has a half-up rounding: the ℕ core, cast into ℤ.
+exists-halfUp-nonneg : ∀ k d s → ∃ λ m → IsRoundHalfUp (+ k) d s m
+exists-halfUp-nonneg k d s with halfUp-core (k ℕ.* 10 ℕ.^ s) d
+... | q , lo , hi = + q , lo′ , hi′
+  where
+  D = suc d
+  N = k ℕ.* 10 ℕ.^ s
+  lo″ : + (2 ℕ.* q ℕ.* D) ≤ + (2 ℕ.* N) + + D
+  lo″ = subst (+ (2 ℕ.* q ℕ.* D) ≤_) (ℤₚ.pos-+ (2 ℕ.* N) D) (ℤ.+≤+ lo)
+  lo′ : + 2 * + q * + D - + D ≤ + 2 * (+ k * pow10 s)
+  lo′ = subst₂ _≤_ (cong (_- + D) (sym (castQ q D)))
+                   (trans (cancelD (+ (2 ℕ.* N)) (+ D)) (sym (castN k s)))
+                   (ℤₚ.+-monoˡ-≤ (- + D) lo″)
+  hi′ : + 2 * (+ k * pow10 s) < + 2 * + q * + D + + D
+  hi′ = subst₂ _<_ (sym (castN k s))
+                   (trans (ℤₚ.pos-+ (2 ℕ.* q ℕ.* D) D) (cong (_+ + D) (sym (castQ q D))))
+                   (ℤ.+<+ hi)
+
+-- R-DR-1: every value has a half-away-from-zero rounding at every precision.
+exists-halfAway : ∀ n d s → ∃ λ m → IsRoundHalfAway n d s m
+exists-halfAway (+ k)    d s = exists-halfUp-nonneg k d s
+exists-halfAway -[1+ k ] d s with exists-halfUp-nonneg (suc k) d s
+... | m , p = - m , subst (IsRoundHalfUp +[1+ k ] d s) (sym (neg-involutive m)) p
+
+-- The rounding as a function: the witness of `exists-halfAway`.
+roundHalfAway : ℤ → ℕ → ℕ → ℤ
+roundHalfAway n d s = proj₁ (exists-halfAway n d s)
+
+-- …and it is the rounding: sound by construction, the only one by uniqueness.
+roundHalfAway-sound : ∀ n d s → IsRoundHalfAway n d s (roundHalfAway n d s)
+roundHalfAway-sound n d s = proj₂ (exists-halfAway n d s)
+
+-- Every stdlib rational, read as its numerator over `denominator-1 + 1`, has a
+-- rounding at every precision.  (`ℚ` is stored reduced; the spec does not need
+-- that, so this is the general statement restricted, not a new one.)
+exists-halfAway-ℚ : ∀ (x : ℚ) s →
+                    ∃ λ m → IsRoundHalfAway (ℚ.numerator x) (ℚ.denominator-1 x) s m
+exists-halfAway-ℚ x s = exists-halfAway (ℚ.numerator x) (ℚ.denominator-1 x) s
+
+-- The constructed function computes the shipped digits, by evaluation: 2/3 →
+-- 0.67, 1/2 → 1 (tie up), −1/2 → −1 and −1/8 → −0.13 (ties away from zero).
+compute-2/3-at-2dp : roundHalfAway (+ 2) 2 2 ≡ + 67
+compute-2/3-at-2dp = refl
+
+compute-half-at-0dp : roundHalfAway (+ 1) 1 0 ≡ + 1
+compute-half-at-0dp = refl
+
+compute-neg-half-at-0dp : roundHalfAway -[1+ 0 ] 1 0 ≡ -[1+ 0 ]
+compute-neg-half-at-0dp = refl
+
+compute-neg-eighth-at-2dp : roundHalfAway -[1+ 0 ] 7 2 ≡ -[1+ 12 ]
+compute-neg-eighth-at-2dp = refl
 ------------------------------------------------------------------------
 -- Known-answer vectors
 --

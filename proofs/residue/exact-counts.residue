@@ -65,17 +65,35 @@ R-EC-4
 
 R-DR-1
   statement: ∀ n d s → ∃ λ m → IsRoundHalfAway n d s m   (existence of the rounding)
+  status: CLOSED (2026-10-06)
+  closed-by: |
+    `exists-halfAway` in ExactCounts/DecimalRounding.agda.  No ℤ division was
+    needed (the earlier note here said it was): the sign split in
+    `IsRoundHalfAway` reduces n < 0 to its magnitude, and for n = + k the witness
+    is the ℕ quotient (2·k·10^s + D) / (2·D), D = d + 1, bounded by
+    `m≡m%n+[m/n]*n` and `m%n<n` from Data.Nat.DivMod.  `roundHalfAway` is that
+    witness as a function; four `refl` checks show it computes the shipped
+    digits, and two gate-selftest mutations show the proof can fail.
+
+R-DR-3
+  statement: |
+    The integer spec is the rational one: `IsRoundHalfUp n d s m` iff
+    m/10^s − 1/(2·10^s) ≤ n/(d+1) < m/10^s + 1/(2·10^s) under stdlib ℚ (or ℚᵘ)
+    order.
   status: OPEN
   why: |
-    Uniqueness is proved (`unique-halfAway`), and every shipped vector exhibits
-    its witness, but there is no general function with a soundness lemma.  It
-    needs floor-division lemmas over ℤ that stdlib 2.1 has only in pieces.
+    The spec is written with the denominators cleared by hand, so "this is
+    rounding to s decimals" is a reading of the inequalities, not a theorem.
+    `exists-halfAway-ℚ` only instantiates the integer spec at a ℚ's numerator
+    and denominator; it does not mention ℚ's `_≤_`.
   impact: |
-    LOW.  A vector can only pin the digit Julia prints (uniqueness), and Julia
-    always prints one; existence would add that the spec is never empty.
+    LOW-MEDIUM.  Statement adequacy, not soundness: an error would be a spec
+    that is consistently not rounding, which the known-answer vectors argue
+    against but do not exclude.
   closes-with: |
-    m = ⌊(2·n·10^s + (d+1)) / (2·(d+1))⌋ for n ≥ 0, mirrored for n < 0, with the
-    two bounds from `Data.Integer.DivMod` (`a≡a%n+[a/n]*n`, `0≤a%n<n`).
+    Over ℚᵘ, whose order is cross-multiplication without normalisation, each
+    bound is one ring-solver step; over normalised ℚ, lift via `toℚᵘ` and its
+    order-preservation lemmas.
 
 R-DR-2
   statement: |
