@@ -13,4 +13,5 @@ import ExactCounts.Prelude
 import ExactCounts.Counts
 import ExactCounts.Proportions
 import ExactCounts.DecimalRounding
+import ExactCounts.DecimalRoundingAdequacy
 import ExactCounts.Vectors
