@@ -195,12 +195,28 @@ julia_rounds(n, D, s, m) =
     NPV._rounded_scaled(n, D, big(10)^Int(s)) == m &&
     NPV._rendered_decimal(n // D, Int(s)) == expected_decimal(m, Int(s))
 
+"""
+    documented_sweep_grid() -> Vector
+
+The inputs `[n, D, s]` that proofs/PROOF-STATUS.md promises the sweep covers,
+written out here rather than read from the generator: numerators -30:30,
+denominators 1:16, precisions 0:3, ordered by precision, denominator, numerator.
+"""
+documented_sweep_grid() = [[n, D, s] for s in 0:3 for D in 1:16 for n in -30:30]
+
 @testset "Agda-certified rounding sweep" begin
     path = joinpath(pkgdir(ExactCounts), "proofs", "vectors", "sweep.toml")
     doc = TOML.parsefile(path)
     rows = doc["rows"]
     @test length(rows) == doc["count"]
     @test length(rows) > 0
+
+    # The table covers the documented grid, not merely whatever bounds the
+    # generator was last run with; a shrunken grid would still type-check.
+    grid = documented_sweep_grid()
+    inputs(rs) = [Int.(r[1:3]) for r in rs]
+    @test inputs(rows) == grid
+    @test inputs(rows[2:end]) != grid
 
     # Every row Agda certified, reproduced by Julia.
     @test sweep_disagreements(julia_rounds, rows) == 0
