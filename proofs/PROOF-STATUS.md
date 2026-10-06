@@ -20,7 +20,10 @@ Agda 2.6.4.3 with agda-stdlib 2.1, the Debian 13 (trixie) packages.
 Every module is checked under `--safe --without-K` (set in
 `exactcounts-proofs.agda-lib`).
 
-`proofs/check.sh` is the whole gate. It runs four checks:
+`proofs/check.sh` is the whole gate; `.github/workflows/ci.yml` runs it on every
+pull request, and on every push to `main` or a `v*` tag, in a Debian 13 container
+with exactly those packages. It
+runs four checks:
 
 1. an axiom audit (no `postulate`, no unsafe pragma, no hole);
 2. `All.agda` must type-check without warnings;
