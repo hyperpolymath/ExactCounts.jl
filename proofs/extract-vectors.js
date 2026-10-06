@@ -156,8 +156,12 @@ function render(records) {
 }
 
 /**
- * Read every row of the certified rounding table.  Throws if the gate entry point
- * does not import the table, or if a line that looks like a row cannot be read.
+ * Read the rounding table as BigInt rows [numerator, denominator, digits, scaled]
+ * in source order. The denominator is decoded from Agda's stored value plus one;
+ * scaled represents the rounded value multiplied by 10^digits.
+ * Run the proof gate first: this function does not check the proofs.
+ * Throws if the gate entry point does not import the table, a line that looks
+ * like a row cannot be read, or no rows are found. File read errors propagate.
  */
 function extractSweep() {
   if (!/^import ExactCounts\.Sweep$/m.test(stripComments(readFileSync(ENTRY, "utf8")))) {

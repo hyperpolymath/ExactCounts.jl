@@ -24,7 +24,11 @@ const N = 30;      // numerators -N .. N
 const DENOMS = 16; // denominators 1 .. DENOMS, stored as d = denominator - 1
 const DIGITS = 4;  // decimal places 0 .. DIGITS - 1
 
-/** Round n / D to s places, halves away from zero, as a scaled integer. */
+/**
+ * Round n / D to s decimal places, halves away from zero, as a scaled integer m
+ * representing m / 10^s. Expects BigInt inputs with D > 0n and s >= 0n.
+ * Throws RangeError for a zero denominator or a negative precision.
+ */
 function roundHalfAway(n, D, s) {
   const a = n < 0n ? -n : n;
   const m = (2n * a * 10n ** s + D) / (2n * D);
