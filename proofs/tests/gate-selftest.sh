@@ -76,6 +76,12 @@ expect_reject "rounding: wrong known-answer digit" run_gate "ExactCounts/Decimal
 expect_reject "rounding: tie forced the wrong way" run_gate "ExactCounts/DecimalRounding.agda" \
   'sed -i "s|half-ties-round-up : IsRoundHalfUp (+ 1) 1 0 (+ 1)|half-ties-round-up : IsRoundHalfUp (+ 1) 1 0 (+ 0)|" "$1"'
 
+expect_reject "existence: negative witness not mirrored" run_gate "ExactCounts/DecimalRounding.agda" \
+  'sed -i "s#^\.\.\. | m , p = - m ,#... | m , p = m ,#" "$1"'
+
+expect_reject "existence: computed digit wrong" run_gate "ExactCounts/DecimalRounding.agda" \
+  'sed -i "s|roundHalfAway (+ 2) 2 2 ≡ + 67|roundHalfAway (+ 2) 2 2 ≡ + 66|" "$1"'
+
 expect_reject "proportions: zero total silently zero" run_gate "ExactCounts/Proportions.agda" \
   'sed -i "s#^\.\.\. | yes _ = refused zeroTotal#... | yes _ = value 0ℚᵘ#" "$1"'
 

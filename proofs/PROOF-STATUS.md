@@ -73,7 +73,10 @@ tested only.
 | `IsRoundHalfAway n d s m` | the shipped rule: half up for n ≥ 0, mirrored for n < 0 | spec; decidable (`isRoundHalfAway?`) |
 | `away-agrees-on-nonneg`, `away-mirror` | the two clauses above, as equations | proved (`refl`) |
 | `unique-halfUp`, `unique-halfAway` | at most one `m` satisfies the spec | **proved**, so a vector pins the one digit string Julia may print |
-| existence (some `m` always satisfies it) | | **not stated**: R-DR-1; every vector exhibits its own witness |
+| `exists-halfAway`, `exists-halfUp-nonneg` | every value has a rounding at every precision (R-DR-1, closed) | **proved**; with uniqueness, exactly one `m` for every `n`, `d`, `s` |
+| `roundHalfAway`, `roundHalfAway-sound` | the rounding as a function, and that it satisfies the spec | **proved**; `compute-*` check by `refl` that it yields 0.67, 1, −1, −0.13 on the shipped vectors. Not yet compared with Julia over a range of inputs |
+| `exists-halfAway-ℚ` | the same for every stdlib `ℚ`, read as numerator over `denominator-1 + 1` | proved (an instance of the above) |
+| the integer spec IS rounding under ℚ order | | **not stated**: R-DR-3 (statement adequacy) |
 | 10 `round_half_away` vectors, 5 of them negative | includes −1/2 → −1, −1/8 → −0.13, −1/1000 → 0.00 (no sign) | bound by vector: both `_rounded_scaled` and the rendered string |
 | 8 `round_half_up` + 2 `round_half_down` vectors | the half-up spec on n ≥ 0, plus **controls** | the controls (half-down, and half-up on a negative numerator) must DISAGREE with Julia. The testset "negative ties go away from zero, not towards +∞" checks that they do |
 | `reject/TieWrongWay`, `reject/WrongDigit`, `reject/NegativeTieTowardsZero` | the spec rejects a wrong tie, a wrong digit, and a negative tie towards zero | must-fail controls |
