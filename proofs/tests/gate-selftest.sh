@@ -82,6 +82,12 @@ expect_reject "existence: negative witness not mirrored" run_gate "ExactCounts/D
 expect_reject "existence: computed digit wrong" run_gate "ExactCounts/DecimalRounding.agda" \
   'sed -i "s|roundHalfAway (+ 2) 2 2 ≡ + 67|roundHalfAway (+ 2) 2 2 ≡ + 66|" "$1"'
 
+expect_reject "adequacy: negative tie sent towards zero" run_gate "ExactCounts/DecimalRoundingAdequacy.agda" \
+  'sed -i "s|  × (x ℚᵘ.< ℚᵘ.0ℚᵘ → (digitᵘ m s ℚᵘ.- halfUlpᵘ s ℚᵘ.< x)|  × (x ℚᵘ.< ℚᵘ.0ℚᵘ → (digitᵘ m s ℚᵘ.- halfUlpᵘ s ℚᵘ.≤ x)|" "$1"'
+
+expect_reject "adequacy: ℚ known answer wrong" run_gate "ExactCounts/DecimalRoundingAdequacy.agda" \
+  'sed -i "s|ℚ./ 8) 2 -\[1+ 12 \]|ℚ./ 8) 2 -[1+ 11 ]|" "$1"'
+
 expect_reject "proportions: zero total silently zero" run_gate "ExactCounts/Proportions.agda" \
   'sed -i "s#^\.\.\. | yes _ = refused zeroTotal#... | yes _ = value 0ℚᵘ#" "$1"'
 

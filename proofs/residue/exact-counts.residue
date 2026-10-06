@@ -77,23 +77,26 @@ R-DR-1
 
 R-DR-3
   statement: |
-    The integer spec is the rational one: `IsRoundHalfUp n d s m` iff
-    m/10^s − 1/(2·10^s) ≤ n/(d+1) < m/10^s + 1/(2·10^s) under stdlib ℚ (or ℚᵘ)
-    order.
-  status: OPEN
-  why: |
-    The spec is written with the denominators cleared by hand, so "this is
-    rounding to s decimals" is a reading of the inequalities, not a theorem.
-    `exists-halfAway-ℚ` only instantiates the integer spec at a ℚ's numerator
-    and denominator; it does not mention ℚ's `_≤_`.
-  impact: |
-    LOW-MEDIUM.  Statement adequacy, not soundness: an error would be a spec
-    that is consistently not rounding, which the known-answer vectors argue
-    against but do not exclude.
-  closes-with: |
-    Over ℚᵘ, whose order is cross-multiplication without normalisation, each
-    bound is one ring-solver step; over normalised ℚ, lift via `toℚᵘ` and its
-    order-preservation lemmas.
+    The integer spec is the rational one: `IsRoundHalfAway n d s m` iff, under
+    stdlib ℚ (and ℚᵘ) arithmetic and order, with x = n/(d+1),
+    x ≥ 0 ⇒ m/10^s − 1/(2·10^s) ≤ x < m/10^s + 1/(2·10^s), and
+    x < 0 ⇒ m/10^s − 1/(2·10^s) < x ≤ m/10^s + 1/(2·10^s).
+  status: CLOSED (2026-10-06)
+  closed-by: |
+    `adequacyᵘ` and `adequacyℚ` in ExactCounts/DecimalRoundingAdequacy.agda.
+    The rational statement (`RoundsHalfAwayᵘ`, `RoundsHalfAwayℚ`) is written with
+    the library's own `_/_`, `_+_`, `_-_`, `_≤_`, `_<_`, and the sign of x is
+    read with the library's order, not from its representation.  Over ℚᵘ each
+    bound is cross-multiplication, one scaling by 10^s and one ring identity;
+    the negative side negates first.  Over ℚ the order is transferred through
+    `toℚᵘ` (`toℚᵘ-mono-≤`/`-cancel-≤`, `toℚᵘ-homo-+`, `toℚᵘ-fromℚᵘ`).
+    Corollaries: `roundHalfAway-roundsℚ` (the computed digit rounds correctly
+    under ℚ) and `roundsℚ-unique` (it is the only digit that does);
+    `neg-tie-roundsℚ` carries −1/8 → −0.13 through the whole chain.  Two
+    gate-selftest mutations (negative tie window made non-strict; −0.13 changed
+    to −0.12) show the proof can fail.  The original statement named
+    `IsRoundHalfUp` and a single window; that is the x ≥ 0 half of this one,
+    and the shipped rule is half-away.
 
 R-DR-2
   statement: |
